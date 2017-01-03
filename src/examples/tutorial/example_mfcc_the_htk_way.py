@@ -15,10 +15,11 @@
 import essentia
 import essentia.standard as ess
 import matplotlib.pyplot as plt
+import numpy as np
 
+def extractor(filename):    
 
-def extractor(filename):
-
+    PREEMPH = 0.97
     fs = 44100
     audio = ess.MonoLoader(filename = filename, 
                                           sampleRate = fs)()
@@ -52,10 +53,16 @@ def extractor(filename):
                         logType = 'log',
                         liftering = 22) # corresponds to htk default CEPLIFTER = 22
 
-
+    preemph_filter = ess.IIR(numerator=[1-PREEMPH])
     mfccs = []
     # startFromZero = True, validFrameThresholdRatio = 1 : the way htk computes windows
     for frame in ess.FrameGenerator(audio, frameSize = frameSize, hopSize = hopSize , startFromZero = True, validFrameThresholdRatio = 1):
+        frame = frame - np.mean(frame)    # if ENORMALISE = T
+        
+        frame_doubled_first = np.insert(frame,0,frame[0])  ##### if PREEMPHASIS needed
+        preemph_frame = preemph_filter(frame_doubled_first)
+        frame = preemph_frame[1:]
+        
         spect = spectrum(w(frame))
         mel_bands, mfcc_coeffs = mfcc_htk(spect)
         mfccs.append(mfcc_coeffs)
