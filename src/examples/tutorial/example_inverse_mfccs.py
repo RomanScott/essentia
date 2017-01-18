@@ -1,4 +1,5 @@
 #### this reproduces the way inverse DCT is applied on MFCC to convert back to spectral domain. 
+#### adapted from https://github.com/pabloEntropia/IMFCC-visualization	
 #### following the implementation:  http://labrosa.ee.columbia.edu/matlab/rastamat/ 
 
 
