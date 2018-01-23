@@ -37,6 +37,7 @@ class Viterbi : public Algorithm {
 
  protected:
   bool _useLog;
+  int _forcedAlignment;
 
  public:
   Viterbi() {
@@ -50,7 +51,7 @@ class Viterbi : public Algorithm {
   }
 
   void declareParameters() {
-    declareParameter("forcedAlignment", "if true, restricts the next state search range to the current or next state", "{true,false}", false);
+    declareParameter("forcedAlignment", "if 1, restricts the next state search range to the current or next state", "[0,1]", 0);
     declareParameter("log", "if true use log-probabilities", "{true,false}", true);
     //todo: optimization implementation flag
   }
