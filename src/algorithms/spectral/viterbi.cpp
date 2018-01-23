@@ -31,6 +31,7 @@ const char* Viterbi::description = DOC("This algorithm computes the viterbi algo
 
 void Viterbi::configure() {
   _useLog = parameter("log").toBool();
+  _forcedAlignment = parameter("forcedAlignment").toInt();
 }
 
 void Viterbi::compute() {
@@ -41,8 +42,6 @@ void Viterbi::compute() {
   std::vector<std::vector<Real> >& lattProbs = _lattProbs.get();
   std::vector<std::vector<Real> >& lattPtrs = _lattPtrs.get();
 
-
-
   // Sanity checks
   if ( transitions.size() != transitions[0].size() )
     throw EssentiaException("transition matrix should be squared");
@@ -50,33 +49,47 @@ void Viterbi::compute() {
   if ( transitions.size() != pi.size() )
     throw EssentiaException("initial probability vector pi should match the size of the transition matrix");
 
-  int nStates = transitions.size();
-  int nObs = emissions[0].size();
-
-  // Init lattice and pointer latt
+  int i, j, k, idx, nStates = transitions.size(), nObs = emissions[0].size();
   Real currentPi;
 
   lattProbs.resize(nStates);
   lattPtrs.resize(nStates);
   
-  for(int i=0; i<nStates; i++) {
+  // Init probabilities and pointer lattices
+  for (i=0; i<nStates; i++) {
     _useLog ? currentPi = log(pi[i]) : currentPi = pi[i];
     
     lattProbs[i].resize(nObs);
     lattPtrs[i].resize(nObs);
 
-    _useLog ? lattProbs[i][0] = currentPi + emissions[i][0] : currentPi * emissions[i][0]; // continue in this line
+    _useLog ? lattProbs[i][0] = currentPi + emissions[i][0] : currentPi * emissions[i][0];
   }
 
   std::vector<Real> candidates(nStates);
-  for(int i=1; i<nObs; i++) {
-    for(int j=0; j<nStates; j++) {  // review  for the forced case
-      for(int k=0; k<nStates; k++) {
-        candidates[k] = _useLog ? lattProbs[k][i-1] + transitions[k][j] + emissions[j][i] : 
-          lattProbs[k][i-1] * transitions[k][j] * emissions[j][i];
+  int firstCandidate = 0;
+  int lastCandidate = nStates;
+
+  // Viterbi loop
+  for (i=1; i<nObs; i++) {
+    for (j=0; j<nStates; j++) {
+      
+      // Restricted search for the forced alignmet case 
+      if (_forcedAlignment == 1) {
+        firstCandidate = std::max(j-2, 0);
+        lastCandidate = j+1;
+        candidates.resize(lastCandidate - firstCandidate);
       }
-      lattPtrs[j][i] = (float)argmax(candidates);
-      lattProbs[j][i] = candidates[(int)lattPtrs[j][i]];
+
+      for (k=firstCandidate, idx=0; k<lastCandidate; k++, idx++) {
+        _useLog ? candidates[idx] = lattProbs[k][i-1] + transitions[k][j] : 
+          candidates[idx] = lattProbs[k][i-1] * transitions[k][j];
+      }
+
+      // Updating the lattices
+      lattPtrs[j][i] = (float)(argmax(candidates) + firstCandidate);
+      lattProbs[j][i] = candidates[(int)lattPtrs[j][i] - firstCandidate];
+      _useLog ? lattProbs[j][i] += emissions[j][i] : 
+        lattProbs[j][i] *= emissions[j][i];
     }
   }
 }
